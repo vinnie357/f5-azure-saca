@@ -10,7 +10,7 @@ then
      exec &>>$LOG_FILE
 else
     #if file exists, exit as only want to run once
-    exit
+    exit 0
 fi
 exec 1>$LOG_FILE 2>&1
 # wait bigip
@@ -27,10 +27,11 @@ wait_bigip_ready
 # echo "done setting app directory size"
 # # end modify appdata directory size
 # metadata route
-echo  -e 'create cli transaction;
-modify sys db config.allow.rfc3927 value enable;
-create sys management-route metadata-route network 169.254.169.254/32 gateway ${mgmtGateway};
-submit cli transaction' | tmsh -q
+# echo  -e 'create cli transaction;
+# modify sys db config.allow.rfc3927 value enable;
+# create sys management-route metadata-route network 169.254.169.254/32 gateway ${mgmtGateway};
+# modify sys global-settings mgmt-dhcp disabled;
+# submit cli transaction' | tmsh -q
 #
 # sca
 #
@@ -59,19 +60,20 @@ pre_onboard_enabled:
     commands:
       - /usr/bin/setdb provision.extramb 500
       - /usr/bin/setdb restjavad.useextramb true
+      - /usr/bin/setdb setup.run false
   - name: expand_rest_storage
     type: inline
     commands:
-      - /bin/tmsh show sys disk directory /appdata
       - /bin/tmsh modify /sys disk directory /appdata new-size 52256768
-      - /bin/tmsh show sys disk directory /appdata
       - /bin/tmsh save sys config
-  # - name: metadata_routes
-  #   type: inline
-  #   commands:
-  #     - /bin/tmsh modify sys db config.allow.rfc3927 value enable
-  #     - /bin/tmsh create sys management-route metadata-route network 169.254.169.254/32 gateway ${mgmtGateway}
-  #     - /bin/tmsh save sys config
+  - name: metadata_routes
+    type: inline
+    commands:
+      - /bin/tmsh modify sys db config.allow.rfc3927 value enable
+      - /bin/tmsh modify sys global-settings mgmt-dhcp disabled
+      - /bin/tmsh create sys management-route metadata-route network 169.254.169.254/32 gateway ${mgmtGateway}
+      - /bin/tmsh modify sys global-settings mgmt-dhcp disabled
+      - /bin/tmsh save sys config
 extension_packages:
   install_operations:
     - extensionType: do
@@ -94,8 +96,23 @@ extension_services:
     - extensionType: as3
       type: url
       value: file:///config/as3.json
+post_onboard_enabled:
+  - name: mgmt route metric
+    type: inline
+    commands:
+      - /bin/tmsh bash -c "route add -net default gw ${mgmtGateway} netmask 0.0.0.0 dev mgmt metric 0"
 EOF
+
+# # Download
+# initVersion="${initVersion}"
+# PACKAGE_URL="https://cdn.f5.com/product/cloudsolutions/f5-bigip-runtime-init/v$${initVersion}/dist/f5-bigip-runtime-init-$${initVersion}-1.gz.run"
+# for i in {1..30}; do
+#     curl -fv --retry 1 --connect-timeout 5 -L "$${PACKAGE_URL}" -o "/var/config/rest/downloads/$${PACKAGE_URL##*/}" && break || sleep 10
+# done
+# # Install
+# bash /var/config/rest/downloads/f5-bigip-runtime-init-$${initVersion}-1.gz.run -- '--cloud azure'
 # install run-time-init
+
 initVersion="${initVersion}"
 curl -o /tmp/f5-bigip-runtime-init-$${initVersion}-1.gz.run https://cdn.f5.com/product/cloudsolutions/f5-bigip-runtime-init/v$${initVersion}/dist/f5-bigip-runtime-init-$${initVersion}-1.gz.run && bash /tmp/f5-bigip-runtime-init-$${initVersion}-1.gz.run -- '--cloud azure'
 # debug
@@ -103,10 +120,9 @@ curl -o /tmp/f5-bigip-runtime-init-$${initVersion}-1.gz.run https://cdn.f5.com/p
 export F5_BIGIP_RUNTIME_INIT_LOG_LEVEL=debug
 # run
 wait_bigip_ready
-echo "running run-time 1"
+echo "---- running run-time-init ----"
 f5-bigip-runtime-init --config-file /config/cloud/cloud_config.yaml
-# do bug run again
-sleep 180
-wait_bigip_ready
-echo "running run-time 2"
-f5-bigip-runtime-init --config-file /config/cloud/cloud_config.yaml
+# add management route with metric 0 for the win
+route add -net default gw ${mgmtGateway} netmask 0.0.0.0 dev mgmt metric 0
+echo "==== Done ===="
+exit 0

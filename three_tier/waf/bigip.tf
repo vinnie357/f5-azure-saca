@@ -257,6 +257,7 @@ resource azurerm_virtual_machine f5vm03 {
     computer_name  = "${var.prefix}vm03"
     admin_username = var.adminUserName
     admin_password = var.adminPassword
+    custom_data    = file("./templates/bigip-cloud-init.yaml.tpl")
   }
 
   os_profile_linux_config {
@@ -302,6 +303,7 @@ resource azurerm_virtual_machine f5vm04 {
     computer_name  = "${var.prefix}vm04"
     admin_username = var.adminUserName
     admin_password = var.adminPassword
+    custom_data    = file("./templates/bigip-cloud-init.yaml.tpl")
   }
 
   os_profile_linux_config {
@@ -319,25 +321,61 @@ resource azurerm_virtual_machine f5vm04 {
 
 # Setup Onboarding scripts
 
-data template_file vm_onboard {
-  template = file("./templates/onboard.tpl")
+// data template_file vm_onboard {
+//   template = file("./templates/onboard.sh.tpl")
+//   vars = {
+//     uname                     = var.adminUserName
+//     upassword                 = var.adminPassword
+//     doVersion                 = "latest"
+//     as3Version                = "latest"
+//     tsVersion                 = "latest"
+//     cfVersion                 = "latest"
+//     fastVersion               = "1.0.0"
+//     doExternalDeclarationUrl  = "https://example.domain.com/do.json"
+//     as3ExternalDeclarationUrl = "https://example.domain.com/as3.json"
+//     tsExternalDeclarationUrl  = "https://example.domain.com/ts.json"
+//     cfExternalDeclarationUrl  = "https://example.domain.com/cf.json"
+//     onboard_log               = var.onboard_log
+//     mgmtGateway               = local.mgmt_gw
+//     DO1_Document              = data.template_file.vm03_do_json.rendered
+//     DO2_Document              = data.template_file.vm04_do_json.rendered
+//     AS3_Document              = data.template_file.as3_json.rendered
+//   }
+// }
+data template_file vm3_onboard {
+  template = file("./templates/runtime-init.sh.tpl")
   vars = {
-    uname                     = var.adminUserName
-    upassword                 = var.adminPassword
-    doVersion                 = "latest"
-    as3Version                = "latest"
-    tsVersion                 = "latest"
-    cfVersion                 = "latest"
-    fastVersion               = "1.0.0"
-    doExternalDeclarationUrl  = "https://example.domain.com/do.json"
-    as3ExternalDeclarationUrl = "https://example.domain.com/as3.json"
-    tsExternalDeclarationUrl  = "https://example.domain.com/ts.json"
-    cfExternalDeclarationUrl  = "https://example.domain.com/cf.json"
-    onboard_log               = var.onboard_log
-    mgmtGateway               = local.mgmt_gw
-    DO1_Document              = data.template_file.vm03_do_json.rendered
-    DO2_Document              = data.template_file.vm04_do_json.rendered
-    AS3_Document              = data.template_file.as3_json.rendered
+    onboard_log  = var.onboard_log
+    DO_Document  = data.template_file.vm03_do_json.rendered
+    AS3_Document = data.template_file.as3_json.rendered
+    mgmtGateway  = local.mgmt_gw
+    #
+    initVersion = "1.1.0"
+    #example ATC version:
+    #as3Version = "3.16.0"
+    doVersion   = "1.15.0"
+    as3Version  = "3.22.1"
+    tsVersion   = "1.14.0"
+    cfVersion   = "1.5.0"
+    fastVersion = "1.4.0"
+  }
+}
+data template_file vm4_onboard {
+  template = file("./templates/runtime-init.sh.tpl")
+  vars = {
+    onboard_log  = var.onboard_log
+    DO_Document  = data.template_file.vm04_do_json.rendered
+    AS3_Document = data.template_file.as3_json.rendered
+    mgmtGateway  = local.mgmt_gw
+    #
+    initVersion = "1.1.0"
+    #example ATC version:
+    #as3Version = "3.16.0"
+    doVersion   = "1.15.0"
+    as3Version  = "3.22.1"
+    tsVersion   = "1.14.0"
+    cfVersion   = "1.5.0"
+    fastVersion = "1.4.0"
   }
 }
 
@@ -436,7 +474,7 @@ resource azurerm_virtual_machine_extension f5vm03-run-startup-cmd {
 
   settings = <<SETTINGS
     {
-        "commandToExecute": "echo '${base64encode(data.template_file.vm_onboard.rendered)}' >> ./startup.sh && cat ./startup.sh | base64 -d >> ./startup-script.sh && chmod +x ./startup-script.sh && rm ./startup.sh && bash ./startup-script.sh 1"
+        "commandToExecute": "echo '${base64encode(data.template_file.vm3_onboard.rendered)}' >> ./startup.sh && cat ./startup.sh | base64 -d >> ./startup-script.sh && chmod +x ./startup-script.sh && rm ./startup.sh && bash ./startup-script.sh 1"
     }
   SETTINGS
 
@@ -453,7 +491,7 @@ resource azurerm_virtual_machine_extension f5vm04-run-startup-cmd {
 
   settings = <<SETTINGS
     {
-        "commandToExecute": "echo '${base64encode(data.template_file.vm_onboard.rendered)}' >> ./startup.sh && cat ./startup.sh | base64 -d >> ./startup-script.sh && chmod +x ./startup-script.sh && rm ./startup.sh && bash ./startup-script.sh 2"
+        "commandToExecute": "echo '${base64encode(data.template_file.vm4_onboard.rendered)}' >> ./startup.sh && cat ./startup.sh | base64 -d >> ./startup-script.sh && chmod +x ./startup-script.sh && rm ./startup.sh && bash ./startup-script.sh 2"
     }
   SETTINGS
 
@@ -477,7 +515,11 @@ resource local_file vm_as3_file {
   filename = "${path.module}/vm_as3_data.json"
 }
 
-resource local_file onboard_file {
-  content  = data.template_file.vm_onboard.rendered
-  filename = "${path.module}/onboard.sh"
+resource local_file onboard_file3 {
+  content  = data.template_file.vm3_onboard.rendered
+  filename = "${path.module}/onboard3.sh"
+}
+resource local_file onboard_file4 {
+  content  = data.template_file.vm4_onboard.rendered
+  filename = "${path.module}/onboard4.sh"
 }

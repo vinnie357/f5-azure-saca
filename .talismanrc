@@ -71,3 +71,9 @@ fileignoreconfig:
   checksum: ea9da279f79b6082f77c00819a8781233cc91d450a440f44a5c00fad48c78fa3
 - filename: releases/v1.0.0/roles/f5-azure-scca-internal-setup/files/f5.http.v1.2.0rc7.tmpl
   checksum: f7a9b764605c4280db5fa1daa4271ec4c64a9d250a61fe866aeacc8349deac2b
+- filename: one_tier/firewall/bigip.tf
+  checksum: 64b3684ebe11af12740ae7b0bcd2180a64fbf1b103e9e1aa96af26aaf00a6de3
+- filename: three_tier/waf/bigip.tf
+  checksum: a2954b6cde33d32b19874aec1a3ebd84c6eede5a76d1612432b5196e8e05df7a
+- filename: three_tier/firewall/bigip.tf
+  checksum: 042a97be1c3c94ae1590f40011ddd6c2b31396ac18e4347fe605c9e1094860f6
