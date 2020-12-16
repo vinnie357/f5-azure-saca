@@ -89,7 +89,7 @@ post_onboard_enabled:
   - name: do stuff here
     type: inline
     commands:
-      - /bin/tmsh list auth paritions
+      - /bin/tmsh list auth parition
 EOF
 cat  <<EOF > /config/cloud/as3_config.yaml
 ---
